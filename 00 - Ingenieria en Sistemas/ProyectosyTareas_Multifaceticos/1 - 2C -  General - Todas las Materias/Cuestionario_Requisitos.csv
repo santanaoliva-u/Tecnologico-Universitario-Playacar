@@ -1,0 +1,27 @@
+Sección,Pregunta,Tipo de Respuesta
+Datos Generales del Cliente,Nombre de la empresa o cliente:,Texto corto
+Datos Generales del Cliente,Persona de contacto:,Texto corto
+Datos Generales del Cliente,Sector o industria:,Texto corto
+Datos Generales del Cliente,Descripción breve del proyecto que desea desarrollar:,Párrafo
+Requisitos Funcionales,¿Cuál es el objetivo principal del proyecto?,Párrafo
+Requisitos Funcionales,¿Qué funciones específicas debe realizar el sistema o producto?,Párrafo
+Requisitos Funcionales,¿Qué tareas debe permitir realizar a los usuarios?,Párrafo
+Requisitos Funcionales,¿Qué tipos de usuarios interactuarán con el sistema (roles)?,Párrafo
+Requisitos Funcionales,¿Existen procesos o flujos de trabajo actuales que deben integrarse en el proyecto?,Párrafo
+Requisitos Funcionales,¿Qué entradas y salidas de datos son necesarias?,Párrafo
+Requisitos Funcionales,"¿Existen características específicas que el sistema debe incluir (por ejemplo, reportes, notificaciones, integraciones con otros sistemas)?",Párrafo
+Requisitos No Funcionales,¿Cuántos usuarios simultáneos espera que utilicen el sistema?,Texto corto
+Requisitos No Funcionales,¿Cuánto tiempo de respuesta considera aceptable para las operaciones más críticas?,Texto corto
+Requisitos No Funcionales,"¿Qué nivel de seguridad es necesario (autenticación, encriptación, permisos de acceso)?",Párrafo
+Requisitos No Funcionales,¿Existen estándares o normativas específicas de seguridad que deban cumplirse?,Párrafo
+Requisitos No Funcionales,¿Cómo debe ser la experiencia de usuario (UX)?,Párrafo
+Requisitos No Funcionales,¿Existe algún diseño o interfaz que el cliente prefiera?,Párrafo
+Requisitos No Funcionales,¿El sistema debe ser escalable para soportar más usuarios o funciones en el futuro?,Texto corto
+Requisitos No Funcionales,"¿El sistema debe funcionar en plataformas específicas (navegadores, dispositivos móviles, sistemas operativos)?",Párrafo
+Requisitos No Funcionales,¿Hay sistemas actuales con los que deba integrarse?,Párrafo
+Requisitos No Funcionales,¿Qué tan fácil debe ser mantener y actualizar el sistema?,Párrafo
+Requisitos No Funcionales,"¿Hay tecnologías, lenguajes de programación o plataformas específicas que se deban utilizar?",Párrafo
+Priorización,¿Cuáles son los requisitos funcionales más importantes para el cliente?,Párrafo
+Priorización,¿Cuáles son los requisitos no funcionales más críticos para el éxito del proyecto?,Párrafo
+Validación,¿Cómo se medirá el éxito del proyecto?,Párrafo
+Validación,¿Qué pruebas o criterios se utilizarán para validar que el proyecto cumple con las expectativas?,Párrafo

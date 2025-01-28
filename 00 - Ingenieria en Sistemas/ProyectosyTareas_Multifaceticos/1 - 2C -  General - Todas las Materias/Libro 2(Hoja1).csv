@@ -1,0 +1,35 @@
+edad Anos;XI(Marca de Clase);Frecuencia absoluta;Frecuencia Relativa (i);Frecuencia relativa (FI);Frec. relativa %;Frecuencia porcentual;%;;realizar los graficos en la libre;;;;;;;
+20.30;25;20;0,1;20;0,1;10;36;;;;;;;;;
+30.40;35;35;0,175;55;0,275;17,5;63;;;;;;;;;
+40.50;45;50;0,25;105;0,525;25;90;;;;;;;;;
+50.60;55;49;0,245;154;0,77;24,5;88,2;;;;;;;;;
+60.70;65;25;0,125;179;0,895;12,5;45;;;;;;;;;
+70.80;75;15;0,075;194;0,97;7,5;27;;;;;;;;;
+80.90;85;6;0,03;200;1;3;10,8;;;;;;;;;
+Total;;200;;;;100;360;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;Actividad ;;;;;;;;;;;;;;
+45,47,49,50,52,54,55,56,57,58,60,62,63,65,66,67,68,69,70,71;;;;;;;;;"Problema Estadistico: Distribucién de Pesos de una Muestra de Personas 
+Planteamiento del problema:
+Una clinica de salud desea analizar los pesos corporales de los pacientes 
+adultos que visitan sus instalaciones en un mes para identificar patrones en la 
+distribucion de los pesos. Para ello, se seleccions una muestra aleatoria de 80 
+pacientes y se registraron sus pesos en kilogramos (kg). 
+El objetivo es organizar y analizar los datos utilizando métodos estadisticos
+basicos. ";;;;;;;
+;;;;;;;;;;;;;;;;
+Edad Anos;;XI(Marca de Clase);Frecuencia absoluta;Frecuencia Relativa (i);Frecuencia relativa (FI);Frec. relativa %;Frecuencia porcentual;%;;;;;;;;Reaizar los graficos en la libre
+45;50;47,5;4;0,2;4;0,2;20;72;;;;;;;;
+50;55;52,5;3;1;7;0,35;100;360;;;;;;;;
+55;60;57,5;4;0,2;11;0,55;20;72;;;;;;;;
+60;65;62,5;3;0,15;14;3;15;54;;;;;;;;
+65;70;67,5;5;0,25;19;0,95;25;90;;;;;;;;
+70;75;72,5;1;0,05;20;1;5;18;;;;;;;;
+;;;;;;;;0;;;;;;;;
+;Total;;20;;;;185;1;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
