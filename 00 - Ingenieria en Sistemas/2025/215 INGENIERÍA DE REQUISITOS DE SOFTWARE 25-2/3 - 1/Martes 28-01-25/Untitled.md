@@ -1,7 +1,7 @@
 
 ---
 
-### **Especificación para Documentación de Requisitos de Software**
+### **Documentación de Requisitos de Software**
 
 ---
 
