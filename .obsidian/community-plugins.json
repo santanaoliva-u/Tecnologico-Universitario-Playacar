@@ -39,5 +39,6 @@
   "templater-obsidian",
   "calendar",
   "obsidian-excalidraw-plugin",
-  "js-engine"
+  "js-engine",
+  "obsidian-latex-suite"
 ]

@@ -2,7 +2,35 @@
   "recentFiles": [
     {
       "basename": "Untitled",
+      "path": "00 - Ingenieria en Sistemas/2025/214 HERRAMIENTAS TECNOLÓGICAS 25-2/Untitled.md"
+    },
+    {
+      "basename": "20250207",
+      "path": "06 - Daily/20250207.md"
+    },
+    {
+      "basename": "examen practico fisica",
+      "path": "03 - Recursos/01 - Tutoriales/practicas/examen practico fisica.md"
+    },
+    {
+      "basename": "20250203",
+      "path": "06 - Daily/20250203.md"
+    },
+    {
+      "basename": "20250205",
+      "path": "06 - Daily/20250205.md"
+    },
+    {
+      "basename": "ED-202502022338.excalidraw",
+      "path": "ED-202502022338.excalidraw.md"
+    },
+    {
+      "basename": "Untitled",
       "path": "00 - Ingenieria en Sistemas/2025/212 REDES INALÁMBRICAS Y CONMUTACIÓN LAN 25-2/Untitled.md"
+    },
+    {
+      "basename": "20250202",
+      "path": "06 - Daily/20250202.md"
     },
     {
       "basename": "Untitled",
@@ -171,38 +199,11 @@
     {
       "basename": "Sin título 2",
       "path": "Sin título 2.md"
-    },
-    {
-      "basename": "20250107",
-      "path": "06 - Daily/20250107.md"
-    },
-    {
-      "basename": "Sin título",
-      "path": "05 - Desarrollo de Software/01 - Código Fuente/Santana Ia/Documentacion/Sin título.md"
-    },
-    {
-      "basename": "modelado",
-      "path": "modelado.md"
-    },
-    {
-      "basename": "20241229",
-      "path": "06 - Daily/20241229.md"
-    },
-    {
-      "basename": "20250106",
-      "path": "06 - Daily/20250106.md"
-    },
-    {
-      "basename": "Sin título",
-      "path": "03 - Recursos/07 - Cursos/IBM Full Stack Software Developer/Introducción a la ingeniería de software/Modulos/3/Cuestionario graduado Fundamentos de la programación/Sin título.md"
-    },
-    {
-      "basename": "Cuestionario graduado Fundamentos de la programación",
-      "path": "03 - Recursos/07 - Cursos/IBM Full Stack Software Developer/Introducción a la ingeniería de software/Modulos/3/Cuestionario graduado Fundamentos de la programación/Cuestionario graduado Fundamentos de la programación.md"
     }
   ],
   "omittedPaths": [],
   "omittedTags": [],
+  "updateOn": "file-open",
   "omitBookmarks": false,
   "maxLength": null,
   "openType": "tab"

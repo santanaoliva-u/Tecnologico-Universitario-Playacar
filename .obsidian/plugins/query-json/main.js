@@ -32,8 +32,8 @@ var import_obsidian = require("obsidian");
 // src/functions.ts
 function parseQuery(query) {
   const parts = query.split(".");
-  return parts.map((part) => {
-    const match = part.match(/(\w+)\[(.*)\]/);
+  const parsed = parts.map((part) => {
+    const match = part.match(/(\w*)\[(.*)\]/);
     if (match) {
       return {
         type: "filter",
@@ -46,6 +46,17 @@ function parseQuery(query) {
       name: part
     };
   });
+  let first = true;
+  for (const q of parsed) {
+    if (first) {
+      first = false;
+    } else {
+      if (q.type === "filter" && !q.field) {
+        throw Error(`Filter without field: ${query}`);
+      }
+    }
+  }
+  return parsed;
 }
 function parseCondition(condition) {
   const logicalOperators = ["&&", "||"];
@@ -85,7 +96,11 @@ function executeQuery(json, parsedQuery) {
       result = result[part.name];
     } else if (part.type === "filter") {
       const { conditions, operators } = parseCondition(part.condition);
-      const filteredResult = result[part.field].filter((item) => {
+      let arr = result;
+      if (part.field) {
+        arr = result[part.field];
+      }
+      const filteredResult = arr.filter((item) => {
         return evaluateConditions(item, conditions, operators);
       });
       if (!finalResult) {
@@ -160,7 +175,7 @@ var QJSON = class extends import_obsidian.Plugin {
         return;
       }
       let id;
-      id = source.match(/#qj-id: (\d+)/);
+      id = source.match(/^#qj-id: (\d+)$/m);
       if (id)
         id = id[1];
       if (isNaN(parseInt(id))) {
@@ -170,7 +185,7 @@ var QJSON = class extends import_obsidian.Plugin {
       }
       let query;
       if (source.includes("#qj-query:")) {
-        query = source.match(/#qj-query: (.+)/);
+        query = source.match(/^#qj-query: ([^\n\r]+)$/m);
         if (query) {
           query = query[1];
         } else {
@@ -181,9 +196,59 @@ var QJSON = class extends import_obsidian.Plugin {
         query = parseQuery(query);
       }
       let format;
+      let selectedFields;
       if (source.includes("#qj-format:")) {
-        format = source.match(/#qj-format: (.+)/);
+        format = source.match(/^#qj-format: ([^\[\n\r ]+)[\t\f ]*(?:\[((?:[^\]\n\r=:,\"]*:(?:[^\]\n\r=:,\"]+|"[^\"]+")(?::[^\]\n\r=,]+)?(?:=[^\]\n\r,]+)?(?:,[^\n\r\w]*)?)+)\])?$/m);
         if (format) {
+          if (format[2]) {
+            const formats = format[2].split(/(?<=[^\]\n\r=:,\"]*:(?:[^\]\n\r=:,\"]+|"[^\"]+")(?::[^\]\n\r=,]+)?(?:=[^\]\n\r,]+)?)[\t\f ]*,/);
+            selectedFields = formats.map((f) => {
+              const fParts = f.match(/^([^\]\n\r=:,\"]*):(?:([^\]\n\r=:,\"]+)|"([^\"]+)")(?::([^\]\n\r=,]+))?(?:=([^\]\n\r,]+))?$/);
+              const flags = fParts[1];
+              const name = fParts[5] || null;
+              const field = fParts[2] || null;
+              const template = fParts[3] || null;
+              const field2 = fParts[4] || null;
+              return {
+                header: flags.includes("h"),
+                bold: flags.includes("b"),
+                comma: flags.includes("c"),
+                br: flags.includes("n"),
+                link: flags.includes("l"),
+                name,
+                field,
+                template,
+                field2
+              };
+            });
+            let first = true;
+            for (const sf of selectedFields) {
+              if (first) {
+                first = false;
+              } else {
+                if (sf.header) {
+                  new import_obsidian.Notice('Field format "header" is not in first position');
+                  el.createEl("pre", { text: 'Field format "header" is not in first position' });
+                  return;
+                }
+              }
+              if (!sf.field && !sf.template) {
+                new import_obsidian.Notice("Field format is missing field name");
+                el.createEl("pre", { text: "Field format is missing field name" });
+                return;
+              }
+              if (sf.link && !sf.field2) {
+                new import_obsidian.Notice("Field format link is missing second field name");
+                el.createEl("pre", { text: "Field format link is missing second field name" });
+                return;
+              }
+              if (sf.template && !sf.name) {
+                new import_obsidian.Notice("Field format with template must provide name");
+                el.createEl("pre", { text: "Field format with template must provide name" });
+                return;
+              }
+            }
+          }
           format = format[1];
         } else {
           new import_obsidian.Notice("No format found");
@@ -194,7 +259,7 @@ var QJSON = class extends import_obsidian.Plugin {
       let desc;
       if (!source.includes("#qj-hide-id")) {
         try {
-          desc = source.match(/#qj-desc: (.+)/);
+          desc = source.match(/^#qj-desc: ([^\n\r]+)$/m);
           if (desc)
             desc = desc[1];
         } catch (e) {
@@ -208,55 +273,177 @@ var QJSON = class extends import_obsidian.Plugin {
         showJson = "";
       }
       if (source.includes("#qj-file:")) {
-        const file = source.match(/#qj-file: (.+)/);
+        const file = source.match(/^#qj-file: ([^\n\r]+)$/m);
         if (file) {
-          source = await this.app.vault.adapter.read(file[1]);
+          try {
+            source = await this.app.vault.adapter.read(file[1]);
+          } catch (error) {
+            console.error("File load error:", error);
+            new import_obsidian.Notice("file not found");
+            el.createEl("pre", { text: "File not found" });
+            return;
+          }
         } else {
-          new import_obsidian.Notice("No file found");
-          el.createEl("pre", { text: "No file found" });
+          new import_obsidian.Notice("No file given");
+          el.createEl("pre", { text: "No file given" });
           return;
         }
+      } else {
+        source = source.replace(/^#qj-[a-z]+: .*$/gm, "");
       }
       const json = JSON.parse(source);
+      let result = json;
+      let fieldResult;
       if (query) {
-        const result = executeQuery(json, query);
-        if (format && query[query.length - 1].type === "field") {
+        result = executeQuery(json, query);
+        fieldResult = query[query.length - 1].type === "field";
+      } else {
+        fieldResult = !Array.isArray(result);
+      }
+      if (!format || format === "json") {
+        el.createEl("pre", { text: JSON.stringify(result, null, 2), cls: "QJSON-" + id + " cdQjson " + showJson });
+      } else {
+        if (fieldResult) {
+          if (selectedFields) {
+            new import_obsidian.Notice("Field queries currently ignore field formats");
+          }
           if (format === "list") {
             const ul = el.createEl("ul");
             if (typeof result === "string") {
               ul.createEl("li", { text: result });
-            } else {
+            } else if (Array.isArray(result)) {
               for (let i = 0; i < result.length; i++) {
-                ul.createEl("li", { text: JSON.stringify(result[i], null, 2) });
+                ul.createEl("li", { text: formatOutput(result[i]) });
               }
+            } else if (typeof result === "object") {
+              for (const key of result) {
+                const tr = tbody.createEl("tr");
+                tr.createEl("th", { text: key });
+                tr.createEl("td", { text: formatOutput(result[key]) });
+              }
+            } else {
+              new import_obsidian.Notice("unsupported object type");
             }
           } else if (format === "table") {
             const table = el.createEl("table");
-            const tbody = table.createEl("tbody");
-            if (typeof result === "object") {
-              for (const key in result) {
-                const tr = tbody.createEl("tr");
+            const tbody2 = table.createEl("tbody");
+            if (typeof result === "string") {
+              const tr = tbody2.createEl("tr");
+              tr.createEl("td", { text: result });
+            } else if (Array.isArray(result)) {
+              for (let i = 0; i < result.length; i++) {
+                const tr = tbody2.createEl("tr");
+                tr.createEl("td", { text: formatOutput(result[i]) });
+              }
+            } else if (typeof result === "object") {
+              for (const key of result) {
+                const tr = tbody2.createEl("tr");
                 tr.createEl("th", { text: key });
-                tr.createEl("td", { text: JSON.stringify(result[key], null, 2) });
+                tr.createEl("td", { text: formatOutput(result[key]) });
               }
             } else {
-              const tr = tbody.createEl("tr");
-              tr.createEl("td", { text: result });
+              new import_obsidian.Notice("unsupported object type");
             }
           } else if (format === "img") {
             if (typeof result === "string") {
               el.createEl("img", { attr: { src: result } });
-            } else {
+            } else if (Array.isArray(result)) {
+              let notString = false;
               for (let i = 0; i < result.length; i++) {
-                el.createEl("img", { attr: { src: result[i], width: 100, height: 100 } });
+                if (typeof result[i] === "string") {
+                  el.createEl("img", { attr: { src: result[i], width: 100, height: 100 } });
+                } else {
+                  notString = true;
+                }
+              }
+              if (notString) {
+                new import_obsidian.Notice("one or more entries could not be rendered");
+              }
+            } else {
+              new import_obsidian.Notice('format "img" does not support objects');
+            }
+          }
+        } else {
+          if (!Array.isArray(result)) {
+            new import_obsidian.Notice("Table & list can only be created from array");
+            el.createEl("pre", { text: "Table & list can only be created from array" });
+            return;
+          }
+          if (!selectedFields && result.length > 0) {
+            if (Array.isArray(result[0]) || typeof result[0] !== "object") {
+              result = result.map((e) => {
+                return { entry: e };
+              });
+            }
+            selectedFields = Object.entries(result[0]).map(([k, v], i) => {
+              return {
+                header: false,
+                bold: false,
+                comma: false,
+                br: false,
+                link: false,
+                name: null,
+                field: k,
+                field2: null
+              };
+            });
+          }
+          let oEl;
+          let titleNum = 1;
+          if (format === "list") {
+            if (selectedFields[0].header && selectedFields[0].name) {
+              formatElement(el, selectedFields[0], null, selectedFields[0].name);
+            }
+            oEl = el.createEl("ul", { attr: { style: "list-style-position: outside;" } });
+          } else if (format === "table") {
+            const table = el.createEl("table");
+            const thead = table.createEl("thead");
+            oEl = table.createEl("tbody");
+            const tr = thead.createEl("tr");
+            for (const select of selectedFields) {
+              const name = select.name || select.field;
+              let td = tr.createEl("td");
+              td.createEl("b", { text: name });
+            }
+          }
+          let eEl;
+          for (const entry of result) {
+            if (format === "list") {
+              let hEl = oEl.createEl("li");
+              if (selectedFields[0].header) {
+                formatElement(hEl, selectedFields[0], entry);
+              } else {
+                hEl.appendText("" + titleNum++);
+              }
+              eEl = hEl.createEl("lu", { attr: { style: "list-style-position: inside;" } });
+            } else if (format === "table") {
+              eEl = oEl.createEl("tr");
+            }
+            for (const select of selectedFields) {
+              if (format === "list") {
+                if (select.header) {
+                  continue;
+                }
+                let fEl = eEl.createEl("li");
+                if (select.name) {
+                  fEl.appendText(select.name);
+                } else {
+                  fEl.appendText(select.field);
+                }
+                fEl.appendText(": ");
+                formatElement(fEl, select, entry);
+              } else if (format === "table") {
+                let fEl;
+                if (select.header) {
+                  fEl = eEl.createEl("th");
+                } else {
+                  fEl = eEl.createEl("td");
+                }
+                formatElement(fEl, select, entry);
               }
             }
           }
-          return;
         }
-        el.createEl("pre", { text: JSON.stringify(result, null, 2), cls: "QJSON-" + id + " cdQjson " + showJson });
-      } else {
-        el.createEl("pre", { text: JSON.stringify(json, null, 2), cls: "QJSON-" + id + " cdQjson " + showJson });
       }
       updateStatusBarCounter();
     });
@@ -330,6 +517,64 @@ function getJSONPath(json, path) {
   if (path === "")
     return json;
   return path.split(".").reduce((acc, key) => acc[key], json);
+}
+function formatString(template, obj) {
+  return template.replace(/{([^}]+)}/g, (match, name) => {
+    return formatOutput(obj[name]);
+  });
+}
+function formatElement(parent, format, json, text) {
+  if (!text) {
+    if (format.field) {
+      const textJson = json[format.field];
+      if (Array.isArray(textJson)) {
+        text = textJson.map((j) => formatOutput(j));
+      } else {
+        text = formatOutput(textJson);
+      }
+    } else {
+      text = formatString(format.template, json);
+    }
+  }
+  let el;
+  if (format.bold) {
+    el = parent.createEl("b");
+  } else {
+    el = parent;
+  }
+  if (Array.isArray(text)) {
+    let idx = 0;
+    for (let t of text) {
+      if (format.link) {
+        el.createEl("a", { text: t, href: json[format.field2][idx] });
+      } else {
+        el.appendText(t);
+      }
+      if (idx < text.length - 1) {
+        if (format.comma) {
+          el.appendText(", ");
+        } else if (format.br) {
+          el.createEl("br");
+        } else {
+          el.appendText(" ");
+        }
+      }
+      idx++;
+    }
+  } else {
+    if (format.link) {
+      el.createEl("a", { text, href: json[format.field2] });
+    } else {
+      el.appendText(text);
+    }
+  }
+}
+function formatOutput(json) {
+  if (typeof json === "string") {
+    return json;
+  } else {
+    return JSON.stringify(json, null, 2);
+  }
 }
 
 

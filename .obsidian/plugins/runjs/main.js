@@ -48,25 +48,28 @@ var import_obsidian = require("obsidian");
 // src/constants.ts
 var EventNames = {
   "workspace": [
-    "quick-preview",
-    "resize",
     "active-leaf-change",
-    "file-open",
-    "layout-change",
-    "window-open",
-    "window-close",
-    "css-change",
-    "file-menu",
-    "editor-menu",
-    "editor-change",
-    "editor-paste",
-    "editor-drop",
     "codemirror",
-    "quit"
+    "css-change",
+    "editor-change",
+    "editor-drop",
+    "editor-menu",
+    "editor-paste",
+    "file-menu",
+    "file-open",
+    "files-menu",
+    "layout-change",
+    "layout-ready",
+    "quick-preview",
+    "quit",
+    "resize",
+    "url-menu",
+    "window-close",
+    "window-open"
   ],
   // "workspaceLeaf": [
   //     "pinned-change",
-  //     "group-change"
+  //     "group-change",
   // ],
   "vault": [
     "create",
@@ -639,6 +642,16 @@ function joinPath(folder, filePath) {
 function htmlDecode(input) {
   var doc = new DOMParser().parseFromString(input, "text/html");
   return doc.documentElement.textContent;
+}
+function convertToString(item) {
+  try {
+    return item.toString();
+  } catch (e) {
+    if (item && typeof item === "object") {
+      return `object@@@ ${item.name || "Unknown"}`;
+    }
+    return String(item);
+  }
 }
 
 // src/settingtab.ts
@@ -1883,7 +1896,7 @@ Event name: ${eventHandlerSetting.eventName}`,
         );
       })
     ).addToggle((toggle) => {
-      toggleComp = toggle.setValue(eventHandlerSetting.enable).setTooltip("Enable/Diable").onChange((value) => {
+      toggleComp = toggle.setValue(eventHandlerSetting.enable).setTooltip("Enable/Disable").onChange((value) => {
         if (value) {
           for (let s of settings) {
             if (s.enable && s != eventHandlerSetting && s.eventObject === eventHandlerSetting.eventObject && s.eventName === eventHandlerSetting.eventName && s.codeName === eventHandlerSetting.codeName) {
@@ -2578,10 +2591,19 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
   constructor(app, manifest) {
     super(app, manifest);
     this.regexpCodeblockDirective = /^\s*`{3,}(?:javascript|js).*?\sRunJS=(['"])(\\.|(?:(?!\1).)*)\1/i;
+    this.codeFileName = "RunJS-codes.json";
     this.focusFile = async (code, shouldSplit = false) => {
-      var _a, _b, _c, _d;
       const targetFile = this.app.vault.getFiles().find((f) => f.path === code.file);
+      let app = this.app;
       if (targetFile) {
+        let setEditorPosition = function() {
+          var _a, _b, _c, _d;
+          const editor = (_a = app.workspace.getActiveViewOfType(import_obsidian12.MarkdownView)) == null ? void 0 : _a.sourceMode.cmEditor;
+          if (editor && code.position) {
+            editor.setCursor((_b = code.position) == null ? void 0 : _b.start.line);
+            editor.scrollIntoView({ from: (_c = code.position) == null ? void 0 : _c.start, to: (_d = code.position) == null ? void 0 : _d.start }, true);
+          }
+        };
         let leaf = this.app.workspace.getMostRecentLeaf();
         if (leaf) {
           const createLeaf = shouldSplit || leaf.getViewState().pinned;
@@ -2596,15 +2618,14 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
           await leaf.openFile(targetFile);
           if (code.form != "codeblock")
             return;
+          let eventRef = this.app.workspace.on("active-leaf-change", function(e) {
+            app.workspace.offref(eventRef);
+            setEditorPosition();
+          });
           const viewState = leaf.getViewState();
           viewState.state.mode = "source";
           viewState.state.source = true;
           await leaf.setViewState(viewState);
-        }
-        const editor = (_a = this.app.workspace.getActiveViewOfType(import_obsidian12.MarkdownView)) == null ? void 0 : _a.sourceMode.cmEditor;
-        if (editor && code.position) {
-          editor.setCursor((_b = code.position) == null ? void 0 : _b.start.line);
-          editor.scrollIntoView({ from: (_c = code.position) == null ? void 0 : _c.start, to: (_d = code.position) == null ? void 0 : _d.end });
         }
       } else {
         this.log("error", "Cannot find a file:" + code.file);
@@ -2620,6 +2641,7 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     this.refreshLimitTime = 3e3;
     this.refreshId = Date.now();
     this.registeredEvents = {};
+    this.codeFilePath = this.manifest.dir + "/" + this.codeFileName;
     let oldSymbols = Object.getOwnPropertySymbols(window).filter((elem) => elem.toString() == this.runJSSymbol.toString());
     for (let oldSymbol of oldSymbols) {
       delete window[oldSymbol];
@@ -2660,6 +2682,28 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
         this.openCodeListView();
       }
     });
+    if (await this.app.vault.adapter.exists(this.codeFilePath)) {
+      const codes = await this.app.vault.adapter.read(this.codeFilePath);
+      this.codes = JSON.parse(codes);
+      this.codes.forEach((code) => {
+        if (code.type == "module") {
+          this.codesModule[code.name] = code;
+        } else {
+          this.codesScript.push(code);
+        }
+      });
+    }
+    for (let autostart of this.settings.autostarts) {
+      if (autostart[1] === true) {
+        this.log("info", `AutoStart - ${autostart[0]}`);
+        this.runCodeByName(autostart[0]);
+      }
+    }
+    for (let eventHandler of this.settings.eventHandlers) {
+      if (eventHandler.enable) {
+        this.addEventHandler(eventHandler);
+      }
+    }
     this.settingTab = new RunJSSettingTab(this.app, this);
     this.addSettingTab(this.settingTab);
     this.app.workspace.onLayoutReady(async () => {
@@ -2674,11 +2718,8 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
         }
       }
       await this.renderCodeListView();
-      (_a = this.listview) == null ? void 0 : _a.update();
-      for (let autostart of this.settings.autostarts) {
-        if (autostart[1] === true) {
-          this.runCodeByName(autostart[0]);
-        }
+      if ((_a = this.listview) == null ? void 0 : _a.update) {
+        this.listview.update();
       }
       for (let key in this.settings.commands) {
         const command = this.settings.commands[key];
@@ -2689,11 +2730,6 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
       for (let ribbon_icon of this.settings.ribbonIcons) {
         if (ribbon_icon.enable) {
           this.runAddRibbonIcon(ribbon_icon);
-        }
-      }
-      for (let eventHandler of this.settings.eventHandlers) {
-        if (eventHandler.enable) {
-          this.addEventHandler(eventHandler);
         }
       }
       this.registerEventsRunJS();
@@ -2946,13 +2982,13 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     }
     return leaf;
   }
-  runCodeByName(name, ...args) {
+  async runCodeByName(name, ...args) {
     const code = this.getCodeByName(name);
     if (code == null) {
       this.log("error", "runCodeByName", "code is null (" + name + ")");
       return;
     }
-    this.runCode(code, ...args);
+    return await this.runCode(code, ...args);
   }
   async runCode(code, ...args) {
     let text = "";
@@ -2978,7 +3014,7 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     }
     const m_text = this.modifyImport(text, folder);
     const F = new AsyncFunction(m_text);
-    await F.apply(this, args);
+    return await F.apply(this, args);
   }
   async refresh() {
     var _a;
@@ -3022,6 +3058,7 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     this.codes.push(...codesDataNew.codes);
     this.codesScript.push(...codesDataNew.codesScript);
     Object.assign(this.codesModule, codesDataNew.codesModule);
+    await this.app.vault.adapter.write(this.codeFilePath, JSON.stringify(this.codes));
     return changed;
   }
   appendCode(code) {
@@ -3378,8 +3415,15 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
       this.runCodeByName(setting.codeName, ...args);
     };
     let obj;
-    if (setting.eventObject === "RunJS.listview") {
-      obj = (_a = this.listview) == null ? void 0 : _a.listviewEvents;
+    if (setting.eventObject.startsWith("RunJS.")) {
+      if (this.listview) {
+        obj = (_a = this.listview) == null ? void 0 : _a.listviewEvents;
+      } else {
+        this.app.workspace.onLayoutReady(async () => {
+          this.addEventHandler(setting);
+        });
+        return;
+      }
     } else {
       obj = this.app[setting.eventObject];
     }
@@ -3410,10 +3454,16 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     }
   }
   removeEventHandler(setting) {
+    var _a;
     if (setting == null)
       return;
     const eventId = [setting.eventObject, setting.eventName, setting.codeName].join(":");
-    const obj = this.app[setting.eventObject];
+    let obj;
+    if (setting.eventObject.startsWith("RunJS.")) {
+      obj = (_a = this.listview) == null ? void 0 : _a.listviewEvents;
+    } else {
+      obj = this.app[setting.eventObject];
+    }
     if (obj && "offref" in obj && typeof obj.offref === "function")
       obj.offref(this.registeredEvents[eventId]);
     delete this.registeredEvents[eventId];
@@ -3485,33 +3535,45 @@ var RunJSPlugin3 = class extends import_obsidian12.Plugin {
     this.saveSettings();
   }
   log(...args) {
+    let type = "log";
+    if (Object.keys(console).contains(args[0])) {
+      type = args.shift();
+    }
+    try {
+      const logMessage = `${this.manifest.name}: [${type}] ${args.map(convertToString).join(", ")}`;
+      if (this.settings.logNotice) {
+        new import_obsidian12.Notice(logMessage);
+      }
+      if (this.settings.logConsole) {
+        const consoleFunc = console[type];
+        if (consoleFunc) {
+          consoleFunc(`${this.manifest.name}:`, ...args);
+        }
+      }
+      if (this.settings.logFile && this.settings.logFilePath) {
+        this.logFile(type, ...args);
+      }
+    } catch (error) {
+      console.error(this.manifest.name + ":", "log - error.", error);
+    }
+  }
+  logFile(...args) {
     const timezoneDateISOSting = (0, import_obsidian12.moment)().format();
     let type = "log";
     if (Object.keys(console).contains(args[0])) {
-      type = args[0];
-      args.shift();
+      type = args.shift();
     }
-    try {
-      if (this.settings.logNotice)
-        new import_obsidian12.Notice(this.manifest.name + ": [" + type + "] " + args.join(" "));
-      if (this.settings.logConsole) {
-        const console_func = console[type];
-        if (console_func)
-          console_func(this.manifest.name + ":", ...args);
-      }
-      if (this.settings.logFile) {
-        if (this.settings.logFilePath != "") {
-          const tFile = this.app.vault.getAbstractFileByPath(this.settings.logFilePath);
-          if (tFile instanceof import_obsidian12.TFile) {
-            this.app.vault.append(tFile, "- " + timezoneDateISOSting + " [" + type + "] " + args.join(" ") + "\n");
-          } else {
-            new import_obsidian12.Notice(this.manifest.name + ": No log file. - " + this.settings.logFilePath);
-            console.error(this.manifest.name + ": No log file. - " + this.settings.logFilePath);
-          }
-        }
-      }
-    } catch (e) {
-      console.error(this.manifest.name + ":", "log - error.");
+    const logMessage = `- ${timezoneDateISOSting} [${type}] ${args.map(convertToString).join(" ")}`;
+    const logFilePath = this.settings.logFilePath;
+    const logFile = this.app.vault.getAbstractFileByPath(logFilePath);
+    const tFile = this.app.vault.getAbstractFileByPath(this.settings.logFilePath);
+    if (logFile instanceof import_obsidian12.TFile) {
+      this.app.vault.append(logFile, `${logMessage}
+`);
+    } else {
+      const errorMessage = `${this.manifest.name}: No log file - ${logFilePath}`;
+      new import_obsidian12.Notice(errorMessage);
+      console.error(errorMessage);
     }
   }
   get listview() {
